@@ -1,0 +1,6 @@
+django
+ultralytics
+opencv-python
+celery
+redis
+djangorestframework

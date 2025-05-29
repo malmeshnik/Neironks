@@ -1,0 +1,22 @@
+val: D:\датасет\images\Test
+train: D:\датасет\images\Train
+names:
+  0: car
+  1: van
+  2: 3-axle bus
+  3: 2-axle bus
+  4: car 1-axle trailer
+  5: car a 2-axle trailer
+  6: truck 2-axle
+  7: truck 3-axle
+  8: truck 4-axle
+  9: 4-axle trailer
+  10: 5-axle trailer
+  11: 3-axle trailer
+  12: 6-axle trailer
+  13: 3-axle saddle truck
+  14: 4-axle saddle truck
+  15: 5-axle saddle truck
+  16: 6-axle saddle truck
+  17: trader
+  18: trolleybus

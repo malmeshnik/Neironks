@@ -1,0 +1,95 @@
+<!DOCTYPE html>
+<html lang="uk">
+<head>
+    <meta charset="UTF-8">
+    <title>Моніторинг трафіку</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+</head>
+<body class="bg-gray-100 p-6">
+    <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
+        <!-- Відео моніторинг -->
+        <div class="col-span-2 space-y-6">
+            <div class="bg-white shadow rounded-lg p-4">
+                <div class="flex justify-between items-center mb-2">
+                    <h2 class="text-lg font-semibold">Відео моніторинг</h2>
+                    <button class="bg-blue-600 text-white px-4 py-1 rounded hover:bg-blue-700">
+                        📸 Зробити стоп-кадр
+                    </button>
+                </div>
+                <div class="bg-gray-800 h-64 rounded flex items-center justify-center">
+                    <svg xmlns="http://www.w3.org/2000/svg" class="h-10 w-10 text-gray-400" fill="none"
+                         viewBox="0 0 24 24" stroke="currentColor">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                              d="M15 10l4.553-2.276A1 1 0 0121 8.618v6.764a1 1 0 01-1.447.894L15 14M4 6h8m-8 0a2 2 0 00-2 2v8a2 2 0 002 2h8a2 2 0 002-2v-2M4 6l4 4m4-4l-4 4"/>
+                    </svg>
+                </div>
+            </div>
+
+            <!-- Трафік за часом -->
+            <div class="bg-white shadow rounded-lg p-4">
+                <h2 class="text-lg font-semibold mb-2">Трафік за часом</h2>
+                <div class="h-40 bg-gray-100 rounded flex items-center justify-center text-gray-400">
+                    (Графік або діаграма)
+                </div>
+            </div>
+        </div>
+
+        <!-- Права колонка -->
+        <div class="space-y-6">
+            <!-- Загальна кількість -->
+            <div class="bg-white shadow rounded-lg p-4 text-center">
+                <p class="text-gray-500">Загальна кількість автомобілів</p>
+                <p class="text-4xl font-bold text-blue-600">1,234</p>
+            </div>
+
+            <!-- Класи -->
+            <div class="card shadow border-0">
+                <div class="card-body">
+                    <h5 class="card-title">Класи транспортних засобів</h5>
+                    <ul class="list-group list-group-flush">
+                    <li class="list-group-item d-flex justify-content-between align-items-center">
+                        <div class="d-flex align-items-center gap-2">
+                        <!-- Легкові -->
+                        <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5 text-primary" viewBox="0 0 20 20" fill="currentColor" width="20" height="20">
+                            <path d="M4 10h12M4 14h12M4 6h12l1 4H3l1-4z" />
+                        </svg>
+                        Легкові
+                        </div>
+                        <span>856</span>
+                    </li>
+                    <li class="list-group-item d-flex justify-content-between align-items-center">
+                        <div class="d-flex align-items-center gap-2">
+                        <!-- Вантажні -->
+                        <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5 text-success" viewBox="0 0 20 20" fill="currentColor" width="20" height="20">
+                            <path d="M3 5a1 1 0 011-1h9a1 1 0 011 1v3h2.586a1 1 0 01.707.293l2.414 2.414a1 1 0 01.293.707V14a1 1 0 01-1 1h-1a3 3 0 11-6 0H9a3 3 0 11-6 0H2a1 1 0 01-1-1V6a1 1 0 011-1h1z" />
+                        </svg>
+                        Вантажні
+                        </div>
+                        <span>234</span>
+                    </li>
+                    <li class="list-group-item d-flex justify-content-between align-items-center">
+                        <div class="d-flex align-items-center gap-2">
+                        <!-- Автобуси -->
+                        <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5 text-warning" viewBox="0 0 20 20" fill="currentColor" width="20" height="20">
+                            <path d="M4 3a1 1 0 00-1 1v11a2 2 0 002 2v1a1 1 0 001 1h1a1 1 0 001-1v-1h4v1a1 1 0 001 1h1a1 1 0 001-1v-1a2 2 0 002-2V4a1 1 0 00-1-1H4zm0 2h12v6H4V5zm1 8a1 1 0 112 0 1 1 0 01-2 0zm10 0a1 1 0 112 0 1 1 0 01-2 0z" />
+                        </svg>
+                        Автобуси
+                        </div>
+                        <span>144</span>
+                    </li>
+                    </ul>
+                </div>
+                </div>
+
+
+            <!-- Розподіл -->
+            <div class="bg-white shadow rounded-lg p-4">
+                <h2 class="text-lg font-semibold mb-2">Розподіл за класами</h2>
+                <div class="h-32 bg-gray-100 rounded flex items-center justify-center text-gray-400">
+                    (Діаграма/Пай-чарт)
+                </div>
+            </div>
+        </div>
+    </div>
+</body>
+</html>

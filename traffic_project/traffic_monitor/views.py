@@ -3,7 +3,8 @@ from django.http import StreamingHttpResponse, Http404
 from .forms import VideoUploadForm
 from .models import VideoUpload, AggregatedData, DetectionResult
 from .tasks import process_video_task
-from django.db.models import Sum
+from django.db.models import Sum, F, FloatField
+# from django.db.models.functions import Cast # Not used in the current implementation of graph_data_query
 
 def main_dashboard_view(request):
     latest_processed_video = VideoUpload.objects.filter(status='completed').order_by('-processed_at').first()
@@ -98,6 +99,28 @@ from .serializers import CombinedChartDataSerializer
 # Note: Models VideoUpload, AggregatedData, and Sum are already imported at the top of the file.
 # from django.utils import timezone # Not strictly needed for current implementation
 # from datetime import timedelta # Not strictly needed for current implementation
+
+
+def video_detail_view(request, video_id):
+    video = get_object_or_404(VideoUpload, id=video_id, status='completed')
+    unique_cars = video.unique_car_count # Assumes unique_car_count field exists and is populated
+
+    # Prepare data for the vehicle count over time graph
+    graph_data_query = DetectionResult.objects.filter(video=video) \
+                                           .values('timestamp_in_video') \
+                                           .annotate(total_vehicles=Sum('count')) \
+                                           .order_by('timestamp_in_video')
+
+    timestamps = [item['timestamp_in_video'] for item in graph_data_query]
+    vehicle_counts = [item['total_vehicles'] for item in graph_data_query]
+
+    context = {
+        'video': video,
+        'unique_car_count': unique_cars,
+        'timestamps': timestamps,
+        'vehicle_counts': vehicle_counts,
+    }
+    return render(request, 'traffic_monitor/video_detail.html', context)
 
 
 class ChartDataAPIView(APIView):

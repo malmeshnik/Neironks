@@ -12,6 +12,7 @@ class VideoUpload(models.Model):
     uploaded_at = models.DateTimeField(auto_now_add=True)
     processed_at = models.DateTimeField(null=True, blank=True)
     processed_video_file = models.FileField(upload_to='processed_videos/', null=True, blank=True)
+    unique_car_count = models.IntegerField(default=0, help_text="Total number of unique cars tracked in the video")
 
     def __str__(self):
         return self.video_file.name

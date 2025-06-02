@@ -1,0 +1,95 @@
+{% extends "traffic_monitor/base.html" %}
+{% load static %}
+
+{% block title %}Video Details - {{ video.video_file.name|slice:"uploads/" }}{% endblock %}
+
+{% block content %}
+<div class="container mt-4">
+    <h2>Video: {{ video.video_file.name|slice:"uploads/" }}</h2>
+    <p>Uploaded: {{ video.uploaded_at|date:"Y-m-d H:i:s" }}</p>
+    {% if video.status == 'completed' %}
+        <p>Processed: {{ video.processed_at|date:"Y-m-d H:i:s" }}</p>
+        <p><strong>Total Unique Cars Tracked:</strong> {{ unique_car_count }}</p>
+
+        <hr>
+        <h3>Vehicle Count Over Time</h3>
+        <div style="max-width: 800px; margin: auto;"> {# Added a wrapper for better chart sizing #}
+            <canvas id="vehicleCountChart"></canvas>
+        </div>
+
+        <!-- Data for Chart.js -->
+        {{ timestamps|json_script:"chart-timestamps" }}
+        {{ vehicle_counts|json_script:"chart-vehicle-counts" }}
+
+    {% else %}
+        <p>This video is still being processed or processing failed.</p>
+    {% endif %}
+
+    <a href="{% url 'main_dashboard' %}" class="btn btn-primary mt-3">Back to Dashboard</a>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+<script>
+    document.addEventListener('DOMContentLoaded', function() {
+        try {
+            const timestampsRaw = JSON.parse(document.getElementById('chart-timestamps').textContent);
+            const vehicleCounts = JSON.parse(document.getElementById('chart-vehicle-counts').textContent);
+
+            // Assuming timestamps are seconds, format them for better readability if needed
+            // For example, convert to HH:MM:SS or just show seconds
+            const formattedTimestamps = timestampsRaw.map(ts => {
+                // If timestamps are simple seconds, you can use them directly
+                // or format them. For example, to show as "Time: Xs"
+                // return `Time: ${parseFloat(ts).toFixed(1)}s`;
+                return parseFloat(ts).toFixed(1); // Keep as number for numerical axis
+            });
+
+            const ctx = document.getElementById('vehicleCountChart').getContext('2d');
+            new Chart(ctx, {
+                type: 'line',
+                data: {
+                    labels: formattedTimestamps, // Use processed timestamps
+                    datasets: [{
+                        label: 'Number of Vehicles',
+                        data: vehicleCounts,
+                        borderColor: 'rgb(75, 192, 192)',
+                        tension: 0.1,
+                        fill: false
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: true, // Adjust as needed
+                    scales: {
+                        x: {
+                            title: {
+                                display: true,
+                                text: 'Time in Video (seconds)'
+                            },
+                            type: 'linear', // Treat timestamps as linear values
+                            ticks: {
+                                // Include a unit in the ticks or format them
+                                callback: function(value, index, values) {
+                                    return value + 's';
+                                }
+                            }
+                        },
+                        y: {
+                            title: {
+                                display: true,
+                                text: 'Number of Vehicles'
+                            },
+                            beginAtZero: true
+                        }
+                    }
+                }
+            });
+        } catch (e) {
+            console.error("Error initializing chart: ", e);
+            // Optionally, display an error message to the user on the page
+        }
+    });
+</script>
+{% endblock %}

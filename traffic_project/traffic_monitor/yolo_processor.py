@@ -13,6 +13,24 @@ YOLO_CLASS_NAMES = {
     16: '6-axle saddle truck', 17: 'trader', 18: 'trolleybus'
 }
 
+def _get_unique_car_ids_from_results(yolo_results_frame):
+    """
+    Extracts unique car tracker IDs from a single frame's YOLO results.
+    Assumes yolo_results_frame is equivalent to results[0] from model.track().
+    """
+    current_frame_car_ids = set()
+    if yolo_results_frame.boxes and hasattr(yolo_results_frame.boxes[0], 'id') and yolo_results_frame.boxes[0].id is not None:
+        for box in yolo_results_frame.boxes:
+            try:
+                if box.id is not None:  # Ensure the box has a tracker ID
+                    class_id = int(box.cls[0].item())
+                    if class_id == 0:  # Class ID for 'car'
+                        current_frame_car_ids.add(box.id.item())
+            except Exception as e:
+                # Log error if a specific box causes issues, but continue processing
+                print(f"Error processing box for unique ID tracking in helper: {e}")
+    return current_frame_car_ids
+
 def process_video_with_yolo(video_upload_instance_id, model_path_str, class_names_dict):
     try:
         video_upload_instance = VideoUpload.objects.get(id=video_upload_instance_id)
@@ -43,6 +61,7 @@ def process_video_with_yolo(video_upload_instance_id, model_path_str, class_name
         height = int(cap.get(cv2.CAP_PROP_FRAME_HEIGHT))
         out_writer = cv2.VideoWriter(output_video_path, fourcc, fps, (width, height))
 
+        collected_unique_car_ids_for_video = set() # Initialize set for unique car tracker IDs for the whole video
         frame_number = 0
         while cap.isOpened():
             ret, frame = cap.read()
@@ -55,6 +74,10 @@ def process_video_with_yolo(video_upload_instance_id, model_path_str, class_name
             # results[0].plot() is a utility from Ultralytics that draws the detected boxes and labels onto the frame.
             annotated_frame = results[0].plot()
             out_writer.write(annotated_frame)
+
+            # Unique car ID tracking using the helper function
+            current_frame_car_ids = _get_unique_car_ids_from_results(results[0])
+            collected_unique_car_ids_for_video.update(current_frame_car_ids)
 
             # Data extraction
             # current_time_seconds is the timestamp of the current frame in seconds from the start of the video.
@@ -105,6 +128,11 @@ def process_video_with_yolo(video_upload_instance_id, model_path_str, class_name
             )
 
         video_upload_instance.processed_video_file.name = os.path.join('processed_videos', annotated_filename)
+
+        # Calculate and store the number of unique cars
+        num_unique_cars = len(collected_unique_car_ids_for_video)
+        video_upload_instance.unique_car_count = num_unique_cars
+
         video_upload_instance.status = 'completed'
         video_upload_instance.processed_at = timezone.now()
         video_upload_instance.save()

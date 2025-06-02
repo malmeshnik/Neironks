@@ -37,7 +37,7 @@ def process_video_with_yolo(video_upload_instance_id, model_path_str, class_name
         
         output_video_path = os.path.join(processed_videos_dir, annotated_filename)
 
-        fourcc = cv2.VideoWriter_fourcc(*'mp4v')
+        fourcc = cv2.VideoWriter_fourcc(*'avc1')
         fps = int(cap.get(cv2.CAP_PROP_FPS))
         width = int(cap.get(cv2.CAP_PROP_FRAME_WIDTH))
         height = int(cap.get(cv2.CAP_PROP_FRAME_HEIGHT))
@@ -51,7 +51,7 @@ def process_video_with_yolo(video_upload_instance_id, model_path_str, class_name
 
             frame_number += 1
             # Process frame with YOLO
-            results = model(frame) # No resizing for now
+            results = model.track(frame, persist=True, tracker='bytetrack.yaml') # No resizing for now
             # results[0].plot() is a utility from Ultralytics that draws the detected boxes and labels onto the frame.
             annotated_frame = results[0].plot()
             out_writer.write(annotated_frame)

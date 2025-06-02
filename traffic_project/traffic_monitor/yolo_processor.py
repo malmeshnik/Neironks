@@ -3,7 +3,7 @@ import os
 from ultralytics import YOLO
 from django.conf import settings
 from django.utils import timezone
-from .models import DetectionResult, VideoUpload
+from .models import DetectionResult, VideoUpload, UniqueCarCountTimeSeries # Added UniqueCarCountTimeSeries
 
 YOLO_CLASS_NAMES = {
     0: 'car', 1: 'van', 2: '3-axle bus', 3: '2-axle bus', 4: 'car 1-axle trailer',
@@ -79,9 +79,16 @@ def process_video_with_yolo(video_upload_instance_id, model_path_str, class_name
             current_frame_car_ids = _get_unique_car_ids_from_results(results[0])
             collected_unique_car_ids_for_video.update(current_frame_car_ids)
 
-            # Data extraction
-            # current_time_seconds is the timestamp of the current frame in seconds from the start of the video.
+            # Get current unique car count and timestamp
+            current_unique_count = len(collected_unique_car_ids_for_video)
             current_time_seconds = cap.get(cv2.CAP_PROP_POS_MSEC) / 1000.0
+
+            # Create and save UniqueCarCountTimeSeries instance
+            UniqueCarCountTimeSeries.objects.create(
+                video=video_upload_instance,
+                timestamp_in_video=current_time_seconds,
+                cumulative_unique_car_count=current_unique_count
+            )
             
             frame_detections = {} # To store counts of each class in the current frame
 
@@ -99,14 +106,11 @@ def process_video_with_yolo(video_upload_instance_id, model_path_str, class_name
             for vehicle_class, count in frame_detections.items():
                 DetectionResult.objects.create(
                     video=video_upload_instance,
-                    timestamp_in_video=current_time_seconds,
+                    timestamp_in_video=current_time_seconds, # Use the same timestamp as for UniqueCarCountTimeSeries
                     vehicle_class=vehicle_class,
                     count=count
                 )
         
-        cap.release()
-        out_writer.release()
-
         cap.release()
         out_writer.release()
 
@@ -148,5 +152,5 @@ def process_video_with_yolo(video_upload_instance_id, model_path_str, class_name
     finally:
         if 'cap' in locals() and cap.isOpened():
             cap.release()
-        if 'out_writer' in locals():
+        if 'out_writer' in locals(): # Ensure out_writer is released if it was initialized
             out_writer.release()

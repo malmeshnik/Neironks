@@ -1,19 +1,28 @@
 from django.shortcuts import render, redirect, get_object_or_404
 from django.http import StreamingHttpResponse, Http404
 from .forms import VideoUploadForm
-from .models import VideoUpload, AggregatedData, DetectionResult
+from .models import VideoUpload, AggregatedData, DetectionResult, UniqueCarCountTimeSeries # Added UniqueCarCountTimeSeries
 from .tasks import process_video_task
 from django.db.models import Sum, F, FloatField
 # from django.db.models.functions import Cast # Not used in the current implementation of graph_data_query
 
 def main_dashboard_view(request):
     latest_processed_video = VideoUpload.objects.filter(status='completed').order_by('-processed_at').first()
-    overall_stats = None
+    overall_stats = {'total_vehicles': 0} # Default if no video
     vehicle_breakdown = None
+    timeline_labels = []
+    timeline_data = []
 
     if latest_processed_video:
-        overall_stats = AggregatedData.objects.filter(video=latest_processed_video).aggregate(total_vehicles=Sum('count'))
+        overall_stats = {'total_vehicles': latest_processed_video.unique_car_count}
         vehicle_breakdown = AggregatedData.objects.filter(video=latest_processed_video).order_by('vehicle_class')
+
+        # Data for "Traffic Over Time" chart from UniqueCarCountTimeSeries
+        time_series_data = UniqueCarCountTimeSeries.objects.filter(video=latest_processed_video).order_by('timestamp_in_video')
+        if time_series_data.exists():
+            timeline_labels = [f"{item.timestamp_in_video:.2f}s" for item in time_series_data] # Formatting for better readability
+            timeline_data = [item.cumulative_unique_car_count for item in time_series_data]
+        # If no time_series_data, labels and data remain empty lists, which is the desired default
 
     context = {
         'latest_video': latest_processed_video,
@@ -21,29 +30,13 @@ def main_dashboard_view(request):
         'vehicle_breakdown': vehicle_breakdown,
         'distribution_labels': [],
         'distribution_data': [],
-        'timeline_labels': [],
-        'timeline_data': [],
+        'timeline_labels': timeline_labels, # Use the new timeline_labels
+        'timeline_data': timeline_data,     # Use the new timeline_data
     }
 
     if latest_processed_video and vehicle_breakdown:
         context['distribution_labels'] = [item.vehicle_class for item in vehicle_breakdown]
         context['distribution_data'] = [item.count for item in vehicle_breakdown]
-
-    # Data for "Traffic Over Time" chart:
-    # This is a simplified representation. It plots the total number of vehicles detected
-    # for each of the last 10 processed videos, using the video's upload time as the label
-    # on the time axis. This gives a general trend across videos rather than a 
-    # continuous time series of detections within a single video.
-    recent_videos = VideoUpload.objects.filter(status='completed').order_by('-uploaded_at')[:10]
-    timeline_labels = []
-    timeline_data = []
-    for video in reversed(recent_videos): # Reversed to show oldest first on the chart (chronological)
-        total_count_for_video = AggregatedData.objects.filter(video=video).aggregate(total=Sum('count'))['total'] or 0
-        timeline_labels.append(video.uploaded_at.strftime('%Y-%m-%d %H:%M'))
-        timeline_data.append(total_count_for_video)
-    
-    context['timeline_labels'] = timeline_labels
-    context['timeline_data'] = timeline_data
     
     return render(request, 'traffic_monitor/index.html', context)
 
@@ -138,6 +131,8 @@ class ChartDataAPIView(APIView):
                 distribution_data.append(item['total_count'])
         
         # For the last 10 processed videos, ordered by upload time (oldest of the 10 first)
+        # This API view's timeline data needs to be updated if it's still in use
+        # For now, focusing on the main_dashboard_view as per subtask
         recent_videos_qs = VideoUpload.objects.filter(status='completed').order_by('-uploaded_at')[:10]
         # We want them oldest to newest for the chart
         recent_videos = list(reversed(recent_videos_qs))

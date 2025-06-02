@@ -37,3 +37,11 @@ class AggregatedData(models.Model):
 
     def __str__(self):
         return f"{self.count} {self.vehicle_class}(s) in {self.video.video_file.name} starting {self.time_period_start}"
+
+class UniqueCarCountTimeSeries(models.Model):
+    video = models.ForeignKey(VideoUpload, on_delete=models.CASCADE, related_name='time_series_data')
+    timestamp_in_video = models.FloatField()
+    cumulative_unique_car_count = models.IntegerField()
+
+    def __str__(self):
+        return f"Video: {self.video.video_file.name} - Time: {self.timestamp_in_video:.2f}s - Count: {self.cumulative_unique_car_count}"

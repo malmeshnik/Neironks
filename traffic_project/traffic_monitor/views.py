@@ -8,42 +8,54 @@ from django.db.models import Sum, F, FloatField
 
 def main_dashboard_view(request):
     latest_processed_video = VideoUpload.objects.filter(status='completed').order_by('-processed_at').first()
-    overall_stats = None
+    overall_stats = {'total_vehicles': 0} # Default
     vehicle_breakdown = None
 
     if latest_processed_video:
-        overall_stats = AggregatedData.objects.filter(video=latest_processed_video).aggregate(total_vehicles=Sum('count'))
+        # Updated overall_stats to fetch unique car count
+        car_data = AggregatedData.objects.filter(video=latest_processed_video, vehicle_class='car').first()
+        if car_data:
+            overall_stats['total_vehicles'] = car_data.count
+
         vehicle_breakdown = AggregatedData.objects.filter(video=latest_processed_video).order_by('vehicle_class')
 
+    # Initialize context with new timeline structure
     context = {
         'latest_video': latest_processed_video,
         'overall_stats': overall_stats,
         'vehicle_breakdown': vehicle_breakdown,
         'distribution_labels': [],
         'distribution_data': [],
-        'timeline_labels': [],
-        'timeline_data': [],
+        'timeline_labels': [], # Will be populated by new logic
+        'timeline_data': [],   # Will be populated by new logic
     }
 
     if latest_processed_video and vehicle_breakdown:
         context['distribution_labels'] = [item.vehicle_class for item in vehicle_breakdown]
         context['distribution_data'] = [item.count for item in vehicle_breakdown]
 
-    # Data for "Traffic Over Time" chart:
-    # This is a simplified representation. It plots the total number of vehicles detected
-    # for each of the last 10 processed videos, using the video's upload time as the label
-    # on the time axis. This gives a general trend across videos rather than a 
-    # continuous time series of detections within a single video.
-    recent_videos = VideoUpload.objects.filter(status='completed').order_by('-uploaded_at')[:10]
-    timeline_labels = []
-    timeline_data = []
-    for video in reversed(recent_videos): # Reversed to show oldest first on the chart (chronological)
-        total_count_for_video = AggregatedData.objects.filter(video=video).aggregate(total=Sum('count'))['total'] or 0
-        timeline_labels.append(video.uploaded_at.strftime('%Y-%m-%d %H:%M'))
-        timeline_data.append(total_count_for_video)
-    
-    context['timeline_labels'] = timeline_labels
-    context['timeline_data'] = timeline_data
+    # New "Traffic Over Time" chart data logic for the latest_processed_video
+    new_timeline_labels = []
+    new_timeline_data = []
+    if latest_processed_video:
+        detections_over_time = DetectionResult.objects.filter(video=latest_processed_video).order_by('timestamp_in_video')
+
+        # Placeholder logic (cumulative sum of objects detected per timestamp):
+        # This is NOT "unique cumulative" but sums DetectionResult.count over time for the video.
+        temp_timeline_data = {} # timestamp: count_at_timestamp
+        for dr in detections_over_time:
+            ts = dr.timestamp_in_video
+            temp_timeline_data[ts] = temp_timeline_data.get(ts, 0) + dr.count # Sum counts if multiple classes at same ts
+
+        sorted_timestamps = sorted(temp_timeline_data.keys())
+        running_total = 0
+        for ts in sorted_timestamps:
+            running_total += temp_timeline_data[ts]
+            new_timeline_labels.append(f"{ts:.2f}s") # Format timestamp
+            new_timeline_data.append(running_total)
+
+    context['timeline_labels'] = new_timeline_labels
+    context['timeline_data'] = new_timeline_data
     
     return render(request, 'traffic_monitor/index.html', context)
 
@@ -127,30 +139,38 @@ class ChartDataAPIView(APIView):
     def get(self, request, *args, **kwargs):
         distribution_labels = []
         distribution_data = []
-        timeline_labels = []
-        timeline_data = []
+        # timeline_labels = [] # Will be new_api_timeline_labels
+        # timeline_data = [] # Will be new_api_timeline_data
 
         latest_video = VideoUpload.objects.filter(status='completed').order_by('-processed_at').first()
         if latest_video:
+            # Distribution chart logic (should be fine as AggregatedData now stores unique counts)
             distribution_qs = AggregatedData.objects.filter(video=latest_video).values('vehicle_class').annotate(total_count=Sum('count')).order_by('vehicle_class')
             for item in distribution_qs:
                 distribution_labels.append(item['vehicle_class'])
                 distribution_data.append(item['total_count'])
         
-        # For the last 10 processed videos, ordered by upload time (oldest of the 10 first)
-        recent_videos_qs = VideoUpload.objects.filter(status='completed').order_by('-uploaded_at')[:10]
-        # We want them oldest to newest for the chart
-        recent_videos = list(reversed(recent_videos_qs))
+        # New timeline chart logic for API, similar to main_dashboard_view
+        new_api_timeline_labels = []
+        new_api_timeline_data = []
+        if latest_video:
+            detections_over_time_api = DetectionResult.objects.filter(video=latest_video).order_by('timestamp_in_video')
 
+            temp_api_timeline_data = {} # timestamp: count_at_timestamp
+            for dr in detections_over_time_api:
+                ts = dr.timestamp_in_video
+                temp_api_timeline_data[ts] = temp_api_timeline_data.get(ts, 0) + dr.count # Sum counts
 
-        for video in recent_videos:
-            total_vehicles_for_video = AggregatedData.objects.filter(video=video).aggregate(total=Sum('count'))['total'] or 0
-            timeline_labels.append(video.uploaded_at.strftime('%Y-%m-%d %H:%M'))
-            timeline_data.append(total_vehicles_for_video)
+            sorted_api_timestamps = sorted(temp_api_timeline_data.keys())
+            running_api_total = 0
+            for ts in sorted_api_timestamps:
+                running_api_total += temp_api_timeline_data[ts]
+                new_api_timeline_labels.append(f"{ts:.2f}s")
+                new_api_timeline_data.append(running_api_total)
 
         combined_data = {
             'distribution_chart': {'labels': distribution_labels, 'data': distribution_data},
-            'timeline_chart': {'labels': timeline_labels, 'data': timeline_data}
+            'timeline_chart': {'labels': new_api_timeline_labels, 'data': new_api_timeline_data}
         }
         serializer = CombinedChartDataSerializer(combined_data)
         return Response(serializer.data)

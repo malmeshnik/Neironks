@@ -13,9 +13,9 @@ def main_dashboard_view(request):
 
     if latest_processed_video:
         # Updated overall_stats to fetch unique car count
-        car_data = AggregatedData.objects.filter(video=latest_processed_video, vehicle_class='car').first()
+        car_data = AggregatedData.objects.filter(video_id=latest_processed_video).aggregate(Sum('count'))['count__sum']
         if car_data:
-            overall_stats['total_vehicles'] = car_data.count
+            overall_stats['total_vehicles'] = car_data
 
         vehicle_breakdown = AggregatedData.objects.filter(video=latest_processed_video).order_by('vehicle_class')
 

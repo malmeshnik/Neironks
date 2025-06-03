@@ -1,0 +1,47 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Video Processing</title>
+</head>
+<body>
+    <div id="processing-info" data-video-id="{{ video_id }}">
+        <p>Зачекайте, ваше відео обробляється...</p>
+    </div>
+
+    <script>
+        document.addEventListener('DOMContentLoaded', function() {
+            const processingInfoDiv = document.getElementById('processing-info');
+            const videoId = processingInfoDiv.dataset.videoId;
+            // Construct the API URL dynamically.
+            // It's important that the path matches what's defined in urls.py
+            const statusApiUrl = `/api/video/${videoId}/status/`;
+            const homeUrl = '/'; // Redirect to the main dashboard
+
+            function checkStatus() {
+                fetch(statusApiUrl)
+                    .then(response => {
+                        if (!response.ok) {
+                            throw new Error('Network response was not ok');
+                        }
+                        return response.json();
+                    })
+                    .then(data => {
+                        if (data.status === 'completed' || data.status === 'failed') {
+                            window.location.href = homeUrl;
+                        }
+                        // If 'processing' or 'pending', the interval will call checkStatus again.
+                    })
+                    .catch(error => {
+                        console.error('Error fetching video status:', error);
+                        // Optional: Add user-facing error message or stop polling
+                        // For now, we'll let it keep trying or fail silently until next check
+                    });
+            }
+
+            // Call checkStatus immediately when the page loads, then set an interval.
+            checkStatus();
+            setInterval(checkStatus, 3000); // Poll every 3 seconds
+        });
+    </script>
+</body>
+</html>

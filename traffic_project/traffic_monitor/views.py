@@ -1,5 +1,5 @@
 from django.shortcuts import render, redirect, get_object_or_404
-from django.http import StreamingHttpResponse, Http404
+from django.http import StreamingHttpResponse, Http404, JsonResponse
 from .forms import VideoUploadForm
 from .models import VideoUpload, AggregatedData, DetectionResult
 from .tasks import process_video_task
@@ -68,7 +68,7 @@ def upload_video_view(request):
             # new_video.status = 'pending' 
             # new_video.save()
             process_video_task.delay(new_video.id)
-            return redirect('/') 
+            return redirect('traffic_monitor:video_processing', video_id=new_video.id)
     else:
         form = VideoUploadForm()
     return render(request, 'traffic_monitor/upload_video.html', {'form': form})
@@ -113,6 +113,11 @@ from .serializers import CombinedChartDataSerializer
 # from datetime import timedelta # Not strictly needed for current implementation
 
 
+def video_processing_view(request, video_id):
+    video = get_object_or_404(VideoUpload, id=video_id)
+    return render(request, 'traffic_monitor/video_processing.html', {'video_id': video_id})
+
+
 def video_detail_view(request, video_id):
     video = get_object_or_404(VideoUpload, id=video_id, status='completed')
     unique_cars = video.unique_car_count # Assumes unique_car_count field exists and is populated
@@ -133,6 +138,11 @@ def video_detail_view(request, video_id):
         'vehicle_counts': vehicle_counts,
     }
     return render(request, 'traffic_monitor/video_detail.html', context)
+
+
+def video_status_api_view(request, video_id):
+    video = get_object_or_404(VideoUpload, id=video_id)
+    return JsonResponse({'status': video.status})
 
 
 class ChartDataAPIView(APIView):
